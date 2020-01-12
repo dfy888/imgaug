@@ -58,6 +58,14 @@ if _NP_VERSION[0] > 1 or _NP_VERSION[1] >= 17:
     SUPPORTS_NEW_NP_RNG_STYLE = True
     BIT_GENERATOR = np.random.SFC64  # pylint: disable=invalid-name
 
+    # interface of BitGenerator
+    # in 1.17 this was at numpy.random.bit_generator.BitGenerator
+    # in 1.18 this was moved to numpy.random.BitGenerator
+    if _NP_VERSION[1] == 17:
+        _BIT_GENERATOR_INTERFACE = np.random.bit_generator.BitGenerator
+    else:
+        _BIT_GENERATOR_INTERFACE = np.random.BitGenerator
+
 # We instantiate a current/global random state here once.
 GLOBAL_RNG = None
 
@@ -99,7 +107,7 @@ class RNG(object):
 
     Parameters
     ----------
-    generator : None or int or RNG or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState
+    generator : None or int or RNG or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState
         The numpy random number generator to use. In case of numpy
         version 1.17 or later, this shouldn't be a ``RandomState`` as that
         class is outdated.
@@ -118,7 +126,7 @@ class RNG(object):
             as the generator for this RNG, i.e. the same as
             ``RNG(other_rng.generator)``.
           * If :class:`numpy.random.Generator`: That generator will be wrapped.
-          * If :class:`numpy.random.bit_generator.BitGenerator`: A numpy
+          * If :class:`numpy.random.BitGenerator`: A numpy
             generator will be created (and wrapped by this RNG) that contains
             the bit generator.
           * If :class:`numpy.random.SeedSequence`: A numpy
@@ -197,7 +205,6 @@ class RNG(object):
 
             It is often sensible to first verify that neither this RNG nor
             `other` are identical to the global RNG.
-
 
         Parameters
         ----------
@@ -861,10 +868,11 @@ def seed(entropy):
 
 
 def _seed_np117_(entropy):
-    # pylint: disable=global-statement
-    global GLOBAL_RNG
-    # TODO any way to seed the Generator object instead of creating a new one?
-    GLOBAL_RNG = RNG(entropy)
+    # We can't easily seed a BitGenerator in-place, nor can we easily modify
+    # a Generator's bit_generator in-place. So instead we create a new
+    # bit generator and set the current global RNG's internal bit generator
+    # state to a copy of the new bit generator's state.
+    get_global_rng().state = BIT_GENERATOR(entropy).state
 
 
 def _seed_np116_(entropy):
@@ -879,7 +887,7 @@ def normalize_generator(generator):
 
     Parameters
     ----------
-    generator : None or int or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState
+    generator : None or int or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState
         The numpy random number generator to normalize. In case of numpy
         version 1.17 or later, this shouldn't be a ``RandomState`` as that
         class is outdated.
@@ -894,7 +902,7 @@ def normalize_generator(generator):
             which will then be returned.
           * If :class:`numpy.random.Generator`: That generator will be
             returned.
-          * If :class:`numpy.random.bit_generator.BitGenerator`: A numpy
+          * If :class:`numpy.random.BitGenerator`: A numpy
             generator will be created and returned that contains the bit
             generator.
           * If :class:`numpy.random.SeedSequence`: A numpy
@@ -923,7 +931,7 @@ def normalize_generator_(generator):
 
     Parameters
     ----------
-    generator : None or int or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState
+    generator : None or int or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState
         See :func:`imgaug.random.normalize_generator`.
 
     Returns
@@ -947,7 +955,7 @@ def _normalize_generator_np117_(generator):
             BIT_GENERATOR(generator)
         )
 
-    if isinstance(generator, np.random.bit_generator.BitGenerator):
+    if isinstance(generator, _BIT_GENERATOR_INTERFACE):
         generator = np.random.Generator(generator)
         # TODO is it necessary/sensible here to reset the cache?
         reset_generator_cache_(generator)
@@ -1535,3 +1543,36 @@ def polyfill_random(generator, size, dtype="float32", out=None):
             out[...] = result
         return result
     return generator.random(size=size, dtype=dtype, out=out)
+
+
+# TODO add tests
+class temporary_numpy_seed(object):
+    """Context to temporarily alter the random state of ``numpy.random``.
+
+    The random state's internal state will be set back to the original one
+    once the context finishes.
+
+    Parameters
+    ----------
+    entropy : None or int
+        The seed value to use.
+        If `None` then the seed will not be altered and the internal state
+        of ``numpy.random`` will not be reset back upon context exit (i.e.
+        this context will do nothing).
+
+    """
+    # pylint complains about class name
+    # pylint: disable=invalid-name
+
+    def __init__(self, entropy=None):
+        self.old_state = None
+        self.entropy = entropy
+
+    def __enter__(self):
+        if self.entropy is not None:
+            self.old_state = np.random.get_state()
+            np.random.seed(self.entropy)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.entropy is not None:
+            np.random.set_state(self.old_state)

@@ -1,23 +1,12 @@
 """
 Augmenters that apply pooling operations to images.
 
-Do not import directly from this file, as the categorization is not final.
-Use instead ::
-
-    from imgaug import augmenters as iaa
-
-and then e.g. ::
-
-    seq = iaa.Sequential([
-        iaa.AveragePooling((1, 3))
-    ])
-
 List of augmenters:
 
-    * AveragePooling
-    * MaxPooling
-    * MinPooling
-    * MedianPooling
+    * :class:`AveragePooling`
+    * :class:`MaxPooling`
+    * :class:`MinPooling`
+    * :class:`MedianPooling`
 
 """
 from __future__ import print_function, division, absolute_import
@@ -166,7 +155,7 @@ class _AbstractPoolingBase(meta.Augmenter):
                 new_shape = _compute_shape_after_pooling(
                     kpsoi.shape, ksize_h, ksize_w)
 
-                keypoints_on_images[i] = kpsoi.on(new_shape)
+                keypoints_on_images[i] = kpsoi.on_(new_shape)
 
         return keypoints_on_images
 
@@ -260,7 +249,7 @@ class AveragePooling(_AbstractPoolingBase):
     deterministic : bool, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
-    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
+    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
     Examples
@@ -371,7 +360,7 @@ class MaxPooling(_AbstractPoolingBase):
     deterministic : bool, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
-    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
+    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
     Examples
@@ -484,7 +473,7 @@ class MinPooling(_AbstractPoolingBase):
     deterministic : bool, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
-    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
+    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
     Examples
@@ -597,7 +586,7 @@ class MedianPooling(_AbstractPoolingBase):
     deterministic : bool, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
-    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
+    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
     Examples

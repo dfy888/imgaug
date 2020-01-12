@@ -1,22 +1,10 @@
 """
 Augmenters that apply mirroring/flipping operations to images.
 
-Do not import directly from this file, as the categorization is not final.
-Use instead ::
-
-    from imgaug import augmenters as iaa
-
-and then e.g. ::
-
-    seq = iaa.Sequential([
-        iaa.Fliplr((0.0, 1.0)),
-        iaa.Flipud((0.0, 1.0))
-    ])
-
 List of augmenters:
 
-    * Fliplr
-    * Flipud
+    * :class:`Fliplr`
+    * :class:`Flipud`
 
 """
 from __future__ import print_function, division, absolute_import
@@ -838,7 +826,7 @@ class Fliplr(meta.Augmenter):
     deterministic : bool, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
-    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
+    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
     Examples
@@ -939,7 +927,7 @@ class Flipud(meta.Augmenter):
     deterministic : bool, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
-    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
+    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
     Examples

@@ -1,22 +1,13 @@
 """
 Augmenters that deal with edge detection.
 
-Do not import directly from this file, as the categorization is not final.
-Use instead ::
-
-    from imgaug import augmenters as iaa
-
-and then e.g. ::
-
-    seq = iaa.Sequential([
-        iaa.Canny()
-    ])
-
 List of augmenters:
 
-    * Canny
+    * :class:`Canny`
 
-EdgeDetect and DirectedEdgeDetect are currently still in `convolutional.py`.
+:class:`~imgaug.augmenters.convolutional.EdgeDetect` and
+:class:`~imgaug.augmenters.convolutional.DirectedEdgeDetect` are currently
+still in ``convolutional.py``.
 
 """
 from __future__ import print_function, division, absolute_import
@@ -270,7 +261,7 @@ class Canny(meta.Augmenter):
     deterministic : bool, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
-    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
+    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
     Examples

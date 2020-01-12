@@ -1,26 +1,14 @@
 """
 Augmenters that blur images.
 
-Do not import directly from this file, as the categorization is not final.
-Use instead ::
-
-    from imgaug import augmenters as iaa
-
-and then e.g. ::
-
-    seq = iaa.Sequential([
-        iaa.GaussianBlur((0.0, 3.0)),
-        iaa.AverageBlur((2, 5))
-    ])
-
 List of augmenters:
 
-    * GaussianBlur
-    * AverageBlur
-    * MedianBlur
-    * BilateralBlur
-    * MotionBlur
-    * MeanShiftBlur
+    * :class:`GaussianBlur`
+    * :class:`AverageBlur`
+    * :class:`MedianBlur`
+    * :class:`BilateralBlur`
+    * :class:`MotionBlur`
+    * :class:`MeanShiftBlur`
 
 """
 from __future__ import print_function, division, absolute_import
@@ -356,6 +344,7 @@ def blur_mean_shift_(image, spatial_window_radius, color_window_radius):
         image = np.tile(image, (1, 1, 3))
 
     # prevent image from becoming cv2.UMat
+    # TODO merge this with apply_lut() normalization/validation
     if image.flags["C_CONTIGUOUS"] is False:
         image = np.ascontiguousarray(image)
 
@@ -423,7 +412,7 @@ class GaussianBlur(meta.Augmenter):
     deterministic : bool, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
-    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
+    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
     Examples
@@ -531,7 +520,7 @@ class AverageBlur(meta.Augmenter):
     deterministic : bool, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
-    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
+    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
     Examples
@@ -718,7 +707,7 @@ class MedianBlur(meta.Augmenter):
     deterministic : bool, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
-    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
+    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
     Examples
@@ -870,7 +859,7 @@ class BilateralBlur(meta.Augmenter):
     deterministic : bool, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
-    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
+    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
     Examples
@@ -903,7 +892,7 @@ class BilateralBlur(meta.Augmenter):
 
     def _augment_batch(self, batch, random_state, parents, hooks):
         # pylint: disable=invalid-name
-        if batch is None:
+        if batch.images is None:
             return batch
 
         images = batch.images
@@ -999,7 +988,7 @@ class MotionBlur(iaa_convolutional.Convolve):
     deterministic : bool, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
-    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
+    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
     Examples
@@ -1127,7 +1116,7 @@ class MeanShiftBlur(meta.Augmenter):
     deterministic : bool, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
-    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
+    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
     Examples

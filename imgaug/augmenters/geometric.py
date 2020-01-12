@@ -1,33 +1,22 @@
 """Augmenters that apply affine or similar transformations.
 
-Do not import directly from this file, as the categorization is not final.
-Use instead ::
-
-    from imgaug import augmenters as iaa
-
-and then e.g. ::
-
-    seq = iaa.Sequential([
-        iaa.Affine(...),
-        iaa.PerspectiveTransform(...)
-    ])
-
 List of augmenters:
-    * Affine
-    * ScaleX
-    * ScaleY
-    * TranslateX
-    * TranslateY
-    * Rotate
-    * ShearX
-    * ShearY
-    * AffineCv2
-    * PiecewiseAffine
-    * PerspectiveTransform
-    * ElasticTransformation
-    * Rot90
-    * WithPolarWarping
-    * Jigsaw
+
+    * :class:`Affine`
+    * :class:`ScaleX`
+    * :class:`ScaleY`
+    * :class:`TranslateX`
+    * :class:`TranslateY`
+    * :class:`Rotate`
+    * :class:`ShearX`
+    * :class:`ShearY`
+    * :class:`AffineCv2`
+    * :class:`PiecewiseAffine`
+    * :class:`PerspectiveTransform`
+    * :class:`ElasticTransformation`
+    * :class:`Rot90`
+    * :class:`WithPolarWarping`
+    * :class:`Jigsaw`
 
 """
 from __future__ import print_function, division, absolute_import
@@ -529,7 +518,7 @@ def generate_jigsaw_destinations(nb_rows, nb_cols, max_steps, random_state,
     max_steps : int
         Maximum number of cells that each cell may be moved.
 
-    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState
+    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState
         RNG or seed to use. If ``None`` the global RNG will be used.
 
     connectivity : int, optional
@@ -597,18 +586,7 @@ class _AffineSamplingResult(object):
         self.mode = mode
         self.order = order
 
-    def to_matrix(self, idx, arr_shape, image_shape, fit_output,
-                  shift_add=(0.5, 0.5)):
-        if 0 in image_shape:
-            return tf.AffineTransform(), arr_shape
-
-        height, width = arr_shape[0:2]
-
-        # for images we use additional shifts of (0.5, 0.5) as otherwise
-        # we get an ugly black border for 90deg rotations
-        shift_y = height / 2.0 - shift_add[0]
-        shift_x = width / 2.0 - shift_add[1]
-
+    def get_affine_parameters(self, idx, arr_shape, image_shape):
         scale_y = self.scale[1][idx]  # TODO 1 and 0 should be inverted here
         scale_x = self.scale[0][idx]
 
@@ -625,20 +603,53 @@ class _AffineSamplingResult(object):
         else:
             translate_x_px = (translate_x / image_shape[1]) * arr_shape[1]
 
-        rotation_rad, shear_x_rad, shear_y_rad = np.deg2rad([
-            self.rotate[idx],
-            self.shear[0][idx], self.shear[1][idx]])
+        rotate_deg = self.rotate[idx]
+        shear_x_deg = self.shear[0][idx]
+        shear_y_deg = self.shear[1][idx]
+        rotate_rad, shear_x_rad, shear_y_rad = np.deg2rad([
+            rotate_deg, shear_x_deg, shear_y_deg])
+
+        # we add the _deg versions of rotate and shear here for PILAffine,
+        # Affine itself only uses *_rad
+        return {
+            "scale_y": scale_y,
+            "scale_x": scale_x,
+            "translate_y_px": translate_y_px,
+            "translate_x_px": translate_x_px,
+            "rotate_rad": rotate_rad,
+            "shear_y_rad": shear_y_rad,
+            "shear_x_rad": shear_x_rad,
+            "rotate_deg": rotate_deg,
+            "shear_y_deg": shear_y_deg,
+            "shear_x_deg": shear_x_deg
+        }
+
+    def to_matrix(self, idx, arr_shape, image_shape, fit_output,
+                  shift_add=(0.5, 0.5)):
+        if 0 in image_shape:
+            return tf.AffineTransform(), arr_shape
+
+        height, width = arr_shape[0:2]
+
+        params = self.get_affine_parameters(idx,
+                                            arr_shape=arr_shape,
+                                            image_shape=image_shape)
+
+        # for images we use additional shifts of (0.5, 0.5) as otherwise
+        # we get an ugly black border for 90deg rotations
+        shift_y = height / 2.0 - shift_add[0]
+        shift_x = width / 2.0 - shift_add[1]
 
         matrix_to_topleft = tf.SimilarityTransform(
             translation=[-shift_x, -shift_y])
         matrix_shear_y_rot = tf.AffineTransform(rotation=-3.141592/2)
-        matrix_shear_y = tf.AffineTransform(shear=shear_y_rad)
+        matrix_shear_y = tf.AffineTransform(shear=params["shear_y_rad"])
         matrix_shear_y_rot_inv = tf.AffineTransform(rotation=3.141592/2)
         matrix_transforms = tf.AffineTransform(
-            scale=(scale_x, scale_y),
-            translation=(translate_x_px, translate_y_px),
-            rotation=rotation_rad,
-            shear=shear_x_rad
+            scale=(params["scale_x"], params["scale_y"]),
+            translation=(params["translate_x_px"], params["translate_y_px"]),
+            rotation=params["rotate_rad"],
+            shear=params["shear_x_rad"]
         )
         matrix_to_center = tf.SimilarityTransform(
             translation=[shift_x, shift_y])
@@ -1057,7 +1068,7 @@ class Affine(meta.Augmenter):
     deterministic : bool, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
-    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
+    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
     Examples
@@ -1528,7 +1539,7 @@ class ScaleX(Affine):
     deterministic : bool, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
-    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
+    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
     Examples
@@ -1602,7 +1613,7 @@ class TranslateX(Affine):
     deterministic : bool, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
-    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
+    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
     Examples
@@ -1685,7 +1696,7 @@ class TranslateY(Affine):
     deterministic : bool, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
-    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
+    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
     Examples
@@ -1761,7 +1772,7 @@ class ScaleY(Affine):
     deterministic : bool, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
-    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
+    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
     Examples
@@ -1828,7 +1839,7 @@ class Rotate(Affine):
     deterministic : bool, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
-    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
+    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
     Examples
@@ -1893,7 +1904,7 @@ class ShearX(Affine):
     deterministic : bool, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
-    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
+    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
     """
@@ -1950,7 +1961,7 @@ class ShearY(Affine):
     deterministic : bool, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
-    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
+    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
     """
@@ -1973,13 +1984,13 @@ class ShearY(Affine):
 
 class AffineCv2(meta.Augmenter):
     """
-    Augmenter to apply affine transformations to images using cv2 (i.e. opencv)
-    backend.
+    **Deprecated.** Augmenter to apply affine transformations to images using
+    cv2 (i.e. opencv) backend.
 
     .. warning::
 
-        This augmenter might be removed in the future as ``Affine``
-        already offers a cv2 backend (use ``backend="cv2"``).
+        This augmenter is deprecated since 0.4.0.
+        Use ``Affine(..., backend='cv2')`` instead.
 
     Affine transformations
     involve:
@@ -2189,7 +2200,7 @@ class AffineCv2(meta.Augmenter):
     deterministic : bool, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
-    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
+    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
     Examples
@@ -2265,6 +2276,13 @@ class AffineCv2(meta.Augmenter):
                  name=None, deterministic=False, random_state=None):
         super(AffineCv2, self).__init__(
             name=name, deterministic=deterministic, random_state=random_state)
+
+        # using a context on __init__ seems to produce no warning,
+        # so warn manually here
+        ia.warn_deprecated(
+            "AffineCv2 is deprecated. "
+            "Use imgaug.augmenters.geometric.Affine(..., backend='cv2') "
+            "instead.", stacklevel=4)
 
         available_orders = [cv2.INTER_NEAREST, cv2.INTER_LINEAR,
                             cv2.INTER_CUBIC, cv2.INTER_LANCZOS4]
@@ -2827,7 +2845,7 @@ class PiecewiseAffine(meta.Augmenter):
     deterministic : bool, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
-    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
+    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
     Examples
@@ -3345,7 +3363,7 @@ class PerspectiveTransform(meta.Augmenter):
     deterministic : bool, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
-    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
+    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
     Examples
@@ -3657,7 +3675,7 @@ class PerspectiveTransform(meta.Augmenter):
                         kp.x = coords[0]
                         kp.y = coords[1]
                 if self.keep_size:
-                    kpsoi = kpsoi.on(shape_orig)
+                    kpsoi = kpsoi.on_(shape_orig)
                 result[i] = kpsoi
 
         return result
@@ -3991,7 +4009,7 @@ class ElasticTransformation(meta.Augmenter):
     deterministic : bool, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
-    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
+    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
     Examples
@@ -4560,7 +4578,7 @@ class ElasticTransformation(meta.Augmenter):
             if nb_channels <= 4:
                 result = cv2.remap(
                     image, map1, map2, interpolation=interpolation,
-                    borderMode=border_mode, borderValue=cval)
+                    borderMode=border_mode, borderValue=(cval,cval,cval))
                 if image.ndim == 3 and result.ndim == 2:
                     result = result[..., np.newaxis]
             else:
@@ -4570,7 +4588,7 @@ class ElasticTransformation(meta.Augmenter):
                     channels = image[..., current_chan_idx:current_chan_idx+4]
                     result_c = cv2.remap(
                         channels, map1, map2, interpolation=interpolation,
-                        borderMode=border_mode, borderValue=cval)
+                        borderMode=border_mode, borderValue=(cval,cval,cval))
                     if result_c.ndim == 2:
                         result_c = result_c[..., np.newaxis]
                     result.append(result_c)
@@ -4642,7 +4660,7 @@ class Rot90(meta.Augmenter):
     deterministic : bool, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
-    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
+    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
     Examples
@@ -4799,7 +4817,7 @@ class Rot90(meta.Augmenter):
                 kpsoi_i.shape = shape_aug
 
                 if self.keep_size and (h, w) != (h_aug, w_aug):
-                    kpsoi_i = kpsoi_i.on(shape_orig)
+                    kpsoi_i = kpsoi_i.on_(shape_orig)
                     kpsoi_i.shape = shape_orig
 
                 result.append(kpsoi_i)
@@ -4896,7 +4914,7 @@ class WithPolarWarping(meta.Augmenter):
     deterministic : bool, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
-    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
+    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
     Examples
@@ -4909,11 +4927,14 @@ class WithPolarWarping(meta.Augmenter):
 
     >>> aug = iaa.WithPolarWarping(
     >>>     iaa.Affine(
-    >>>         translate_percent={"x": (-0.1, 0.1), "y": (-0.1, 0.1)}
+    >>>         translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)},
+    >>>         rotate=(-35, 35),
+    >>>         scale=(0.8, 1.2),
+    >>>         shear={"x": (-15, 15), "y": (-15, 15)}
     >>>     )
     >>> )
 
-    Apply affine translations in polar representation.
+    Apply affine transformations in polar representation.
 
     >>> aug = iaa.WithPolarWarping(iaa.AveragePooling((2, 8)))
 
@@ -4970,7 +4991,7 @@ class WithPolarWarping(meta.Augmenter):
             return batch, (False, batch_contained_polygons)
 
         psois = [bbsoi.to_polygons_on_image() for bbsoi in batch.bounding_boxes]
-        psois = [psoi.subdivide(2) for psoi in psois]
+        psois = [psoi.subdivide_(2) for psoi in psois]
 
         # Mark Polygons that are really Bounding Boxes
         for psoi in psois:
@@ -5534,7 +5555,7 @@ class Jigsaw(meta.Augmenter):
     deterministic : bool, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
-    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
+    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
     Examples

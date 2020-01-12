@@ -413,6 +413,11 @@ class Test_handle_categorical_string_param(unittest.TestCase):
         assert isinstance(param, iap.Choice)
         assert param.a == valid_values
 
+    def test_arg_is_str(self):
+        param = iap.handle_categorical_string_param("class1", "foo")
+        assert isinstance(param, iap.Deterministic)
+        assert param.value == "class1"
+
     def test_arg_is_valid_str(self):
         valid_values = ["class1", "class2"]
 
@@ -433,6 +438,13 @@ class Test_handle_categorical_string_param(unittest.TestCase):
             "Expected parameter 'foo' to be one of: class1, class2. "
             "Got: class3.")
         assert expected == str(ctx.exception)
+
+    def test_arg_is_list(self):
+        param = iap.handle_categorical_string_param(["class1", "class3"],
+                                                    "foo")
+
+        assert isinstance(param, iap.Choice)
+        assert param.a == ["class1", "class3"]
 
     def test_arg_is_valid_list(self):
         valid_values = ["class1", "class2", "class3"]
@@ -485,6 +497,7 @@ class Test_handle_categorical_string_param(unittest.TestCase):
 
         expected = "Expected parameter 'foo' to be imgaug.ALL"
         assert expected in str(ctx.exception)
+
 
 class Test_handle_probability_param(unittest.TestCase):
     def test_bool_like_values(self):
@@ -2826,7 +2839,7 @@ class TestDiscretize(unittest.TestCase):
         assert (
             param.__str__()
             == param.__repr__()
-            == "Discretize(Deterministic(int 0))"
+            == "Discretize(Deterministic(int 0), round=True)"
         )
 
     def test_applied_to_deterministic(self):
@@ -2869,6 +2882,20 @@ class TestDiscretize(unittest.TestCase):
         samples2 = param.draw_samples((10000,))
 
         assert np.all(np.abs(samples1 - samples2) < 0.2*(10000/3))
+
+    def test_round(self):
+        param_orig = iap.Uniform(0, 1.99)
+        param_round = iap.Discretize(param_orig)
+        param_no_round = iap.Discretize(param_orig, round=False)
+
+        samples_round = param_round.draw_samples((10000,))
+        samples_no_round = param_no_round.draw_samples((10000,))
+
+        uq_round = np.unique(samples_round)
+        uq_no_round = np.unique(samples_no_round)
+
+        assert np.all([v in uq_round for v in [0, 1, 2]])
+        assert np.all([v in uq_no_round for v in [0, 1]])
 
     def test_samples_same_values_for_same_seeds(self):
         param_orig = iap.DiscreteUniform(0, 2)

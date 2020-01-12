@@ -1,18 +1,8 @@
 """Augmenters that help with debugging.
 
-Do not import directly from this file, as the categorization is not final.
-Use instead ::
-
-    from imgaug import augmenters as iaa
-
-and then e.g. ::
-
-    seq = iaa.Sequential([
-        iaa.SaveDebugImageEveryNBatches(...)
-    ])
-
 List of augmenters:
-    * SaveDebugImageEveryNBatches
+
+    * :class:`SaveDebugImageEveryNBatches`
 
 """
 from __future__ import print_function, division, absolute_import
@@ -249,11 +239,9 @@ class _DebugGridCBAsOICell(_IDebugGridCell):
         image_rsp, size_rs, paddings = _resizepad_to_size(
             self.image, (height, width), cval=_COLOR_GRID_BACKGROUND)
 
-        cbasoi = self.cbasoi.on(size_rs)
-        if isinstance(cbasoi, ia.KeypointsOnImage):
-            cbasoi = cbasoi.shift(y=paddings[0], x=paddings[3])
-        else:
-            cbasoi = cbasoi.shift(top=paddings[0], left=paddings[3])
+        cbasoi = self.cbasoi.deepcopy()
+        cbasoi = cbasoi.on_(size_rs)
+        cbasoi = cbasoi.shift_(y=paddings[0], x=paddings[3])
         cbasoi.shape = image_rsp.shape
 
         return cbasoi.draw_on_image(image_rsp)
@@ -364,7 +352,7 @@ def draw_debug_image(images, heatmaps=None, segmentation_maps=None,
     >>> kpsoi = KeypointsOnImage.from_xy_array([(10.5, 20.5), (30.5, 30.5)],
     >>>                                        shape=image.shape)
     >>> debug_image = iaa.draw_debug_image(images=[image, image],
-    >>>                                    keypoints=[kpsoi, kpsoi)
+    >>>                                    keypoints=[kpsoi, kpsoi])
 
     Generate a debug image for two empty images, each having two keypoints
     drawn on them.
@@ -679,8 +667,10 @@ def _generate_cbasois_description(cbasois, images):
         "total items: %6d"
     ) % (min(nb_items_lst), max(nb_items_lst), nb_items)
 
-    areas = [cbasoi.area if hasattr(cbasoi, "area") else -1
-             for cbasoi in cbasois]
+    areas = [
+        cba.area if hasattr(cba, "area") else -1
+        for cbasoi in cbasois
+        for cba in cbasoi.items]
     areas = areas if len(cbasois) > 0 else [-1]
     areas_str = (
         "smallest area: %7.4f\n"
@@ -1007,7 +997,7 @@ class _SaveDebugImage(meta.Augmenter):
     deterministic : bool, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
-    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
+    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
     """
@@ -1062,7 +1052,7 @@ class SaveDebugImageEveryNBatches(_SaveDebugImage):
     deterministic : bool, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
-    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.bit_generator.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
+    random_state : None or int or imgaug.random.RNG or numpy.random.Generator or numpy.random.BitGenerator or numpy.random.SeedSequence or numpy.random.RandomState, optional
         See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
 
     Examples
